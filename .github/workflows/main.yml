@@ -1,38 +1,18 @@
-name: Build Pure C++ APK
-
-on:
-  push:
-    branches: [ main ]
-  workflow_dispatch:
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
-
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
       - name: Generate Android Project & Build APK
         run: |
           # 1. Создаем структуру папок
           mkdir -p app/src/main/cpp
           mkdir -p app/src/main/res/values
 
-          # 2. Копируем ТВОИ исходники из папки src/ в C++ папку Android
+          # 2. Копируем ТВОИ исходники
           cp src/*.cpp app/src/main/cpp/
           cp src/*.h app/src/main/cpp/
 
-          # 3. Генерируем AndroidManifest.xml (БЕЗ атрибута package, чтобы Gradle не ругался)
+          # ДИАГНОСТИКА: Проверяем, скопировались ли файлы
+          echo "=== Файлы в папке C++ ==="
+          ls -la app/src/main/cpp/
+
+          # 3. Генерируем AndroidManifest.xml
           cat << 'EOF' > app/src/main/AndroidManifest.xml
           <?xml version="1.0" encoding="utf-8"?>
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
@@ -52,14 +32,13 @@ jobs:
           </manifest>
           EOF
 
-          # 4. Генерируем строки
           cat << 'EOF' > app/src/main/res/values/strings.xml
           <resources>
               <string name="app_name">Cubic Battle</string>
           </resources>
           EOF
 
-          # 5. Генерируем CMakeLists.txt (Правильный под NDK 25+, только GLESv2)
+          # 4. Генерируем CMakeLists.txt
           cat << 'EOF' > app/src/main/cpp/CMakeLists.txt
           cmake_minimum_required(VERSION 3.18.1)
           project("cubicbattle")
@@ -83,7 +62,7 @@ jobs:
           )
           EOF
 
-          # 6. Генерируем настройки Gradle
+          # 5. Генерируем Gradle
           cat << 'EOF' > settings.gradle
           pluginManagement {
               repositories {
@@ -142,16 +121,16 @@ jobs:
           dependencies {}
           EOF
 
-          # 7. Очистка кэша CMake (чтобы старые ошибки не мешали)
+          # Очистка кэша
           rm -rf app/.cxx .gradle
 
-          # 8. Сборка
+          # ДИАГНОСТИКА: Пробуем запустить CMake напрямую, чтобы увидеть ошибку без мусора Gradle
+          echo "=== Запуск CMake Configure ==="
+          cd app/src/main/cpp
+          /usr/local/lib/android/sdk/cmake/3.22.1/bin/cmake -DCMAKE_BUILD_TYPE=Debug -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-24 -DCMAKE_TOOLCHAIN_FILE=/usr/local/lib/android/sdk/ndk/25.1.8937393/build/cmake/android.toolchain.cmake -B build .
+          cd ../../../
+
+          # Сборка
           gradle wrapper --gradle-version 8.5
           chmod +x gradlew
-          ./gradlew assembleDebug --stacktrace
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: CubicBattle-PureCPP
-          path: app/build/outputs/apk/debug/*.apk
+          ./gradlew assembleDebug --stacktrace 2>&1 | head -n 200
