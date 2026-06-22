@@ -7,6 +7,8 @@ struct Joystick {
     Vec2 stick;
     float radius;
     float stickRadius;
+    
+    Joystick() : id(-1), center({0,0}), stick({0,0}), radius(90.0f), stickRadius(36.0f) {}
 };
 
 struct TouchButton {
@@ -14,22 +16,23 @@ struct TouchButton {
     Vec2 pos;
     float radius;
     bool hold;
-    float pressAnim; // 0 to 1
+    float pressAnim;
+    
+    TouchButton() : id(-1), pos({0,0}), radius(104.0f), hold(false), pressAnim(0.0f) {}
 };
 
 struct KeyState {
     bool w, a, s, d, space;
+    KeyState() : w(false), a(false), s(false), d(false), space(false) {}
 };
 
 class Controls {
 public:
     Joystick joy;
     TouchButton atkBtn;
-    TouchButton backBtn; // Используем radius для определения площади
     KeyState keys;
     Vec2 aimDir;
     bool spaceJustPressed;
-    bool isMobile;
 
     Controls();
     void place(int w, int h);
@@ -37,7 +40,6 @@ public:
     Vec2 getMove();
     bool getShot(Vec2& outAim);
     
-    // Ввод
     void touchPressed(int id, float x, float y);
     void touchMoved(int id, float x, float y);
     void touchReleased(int id);
