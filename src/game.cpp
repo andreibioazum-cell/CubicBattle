@@ -1,5 +1,5 @@
 #include "game.h"
-#include <GLES2/gl2.h>
+#include <GLES/gl.h> // Используем OpenGL ES 1.x
 #include <cmath>
 
 Game::Game() {
@@ -14,16 +14,18 @@ void Game::init(Engine& engine) {
     controls.place(engine.width, engine.height);
 }
 
-void Game::update(float dt) {
+void Game::update(float dt, Engine& engine) {
     controls.update(dt);
     Vec2 move = controls.getMove();
     
     playerPos.x += move.x * playerSpeed * dt;
     playerPos.y += move.y * playerSpeed * dt;
     
-    // Ограничения экрана
-    playerPos.x = std::max(0.0f, std::min((float)engine.width - playerSize, playerPos.x)); // упрощено
-    playerPos.y = std::max(0.0f, std::min((float)engine.height - playerSize, playerPos.y));
+    // Экран
+    if (playerPos.x < 0) playerPos.x = 0;
+    if (playerPos.y < 0) playerPos.y = 0;
+    if (playerPos.x > engine.width - playerSize) playerPos.x = engine.width - playerSize;
+    if (playerPos.y > engine.height - playerSize) playerPos.y = engine.height - playerSize;
     
     Vec2 aim;
     if (controls.getShot(aim) && bulletCount < MAX_BULLETS) {
@@ -46,48 +48,59 @@ void Game::update(float dt) {
     }
 }
 
-// Простейшая отрисовка прямоугольников (без VBO, для примера)
-void drawRect(float x, float y, float w, float h, float r, float g, float b) {
+// Простая отрисовка прямоугольника в OpenGL ES 1.x
+void drawRect(float x, float y, float w, float h, float r, float g, float b, float a = 1.0f) {
     GLfloat vertices[] = {
-        x, y,     r, g, b,
-        x+w, y,   r, g, b,
-        x+w, y+h, r, g, b,
-        x, y,     r, g, b,
-        x+w, y+h, r, g, b,
-        x, y+h,   r, g, b
+        x, y,     x+w, y,   x+w, y+h,
+        x, y,     x+w, y+h, x, y+h
     };
-    glEnableVertexAttribArray(0);
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), vertices);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(GLfloat), &vertices[2]);
+    glColor4f(r, g, b, a);
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glVertexPointer(2, GL_FLOAT, 0, vertices);
     glDrawArrays(GL_TRIANGLES, 0, 6);
+    glDisableClientState(GL_VERTEX_ARRAY);
 }
 
 void Game::draw(Engine& engine) {
-    // Очистка фона
-    glClearColor(0.1f, 0.1f, 0.15f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT);
-    
-    glUseProgram(0); // Фиксированный пайплайн (устарело, но работает в GLES 2.0 для простоты)
-    
-    // Ортографическая проекция (на лету)
+    // Настройка 2D камеры
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
     glOrthof(0, engine.width, engine.height, 0, -1, 1);
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
 
-    // Игрок
-    drawRect(playerPos.x, playerPos.y, playerSize, playerSize, 0.2f, 0.6f, 1.0f);
-    
-    // Пули
-    for(int i=0; i<bulletCount; i++) {
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    // Фон
+    glClearColor(0.1f, 0.1f, 0.15f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    // Пули (желтые)
+    for(int i = 0; i < bulletCount; i++) {
         drawRect(bullets[i].pos.x - 5, bullets[i].pos.y - 5, 10, 10, 1.0f, 0.8f, 0.2f);
     }
+
+    // Игрок (синий)
+    drawRect(playerPos.x, playerPos.y, playerSize, playerSize, 0.2f, 0.6f, 1.0f);
     
-    // UI (Джойстик)
-    // (Рисуем упрощенно)
-    glColor4f(0, 0, 0, 0.2f); drawRect(controls.joy.center.x - controls.joy.radius, controls.joy.center.y - controls.joy.radius, controls.joy.radius*2, controls.joy.radius*2, 0,0,0);
-    
+    // Джойстик (темный полупрозрачный)
+    drawRect(controls.joy.center.x - controls.joy.radius, 
+             controls.joy.center.y - controls.joy.radius, 
+             controls.joy.radius*2, controls.joy.radius*2, 
+             0.0f, 0.0f, 0.0f, 0.3f);
+             
+    // Стик джойстика
+    drawRect(controls.joy.stick.x - controls.joy.stickRadius, 
+             controls.joy.stick.y - controls.joy.stickRadius, 
+             controls.joy.stickRadius*2, controls.joy.stickRadius*2, 
+             0.0f, 0.0f, 0.0f, 0.8f);
+
+    // Кнопка атаки (фиолетовая)
+    drawRect(controls.atkBtn.pos.x - controls.atkBtn.radius, 
+             controls.atkBtn.pos.y - controls.atkBtn.radius, 
+             controls.atkBtn.radius*2, controls.atkBtn.radius*2, 
+             0.35f, 0.15f, 0.75f, 1.0f);
+
     eglSwapBuffers(engine.display, engine.surface);
 }
