@@ -4,6 +4,7 @@
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, "CubicBattle", __VA_ARGS__)
 
 int Engine::initDisplay() {
+    // Запрашиваем OpenGL ES 2.0
     const EGLint attribs[] = { EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT, EGL_NONE };
     EGLint w, h, format;
     EGLConfig config;
@@ -16,7 +17,7 @@ int Engine::initDisplay() {
     ANativeWindow_setBuffersGeometry(app->window, 0, 0, format);
     
     surface = eglCreateWindowSurface(display, config, app->window, NULL);
-    EGLint contextAttribs[] = { EGL_CONTEXT_CLIENT_VERSION, 2, EGL_NONE };
+    EGLint contextAttribs[] = { EGL_CONTEXT_CLIENT_VERSION, 2, EGL_NONE }; // Версия 2.0
     context = eglCreateContext(display, config, NULL, contextAttribs);
     
     eglMakeCurrent(display, surface, surface, context);
