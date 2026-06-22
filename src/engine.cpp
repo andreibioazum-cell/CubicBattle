@@ -30,3 +30,19 @@ int Engine::initDisplay() {
 
 void Engine::termDisplay() {
     if (display != EGL_NO_DISPLAY) {
+        eglMakeCurrent(display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+        if (context != EGL_NO_CONTEXT) eglDestroyContext(display, context);
+        if (surface != EGL_NO_SURFACE) eglDestroySurface(display, surface);
+        eglTerminate(display);
+    }
+    display = EGL_NO_DISPLAY;
+    context = EGL_NO_CONTEXT;
+    surface = EGL_NO_SURFACE;
+}
+
+void Engine::drawFrame() {
+    if (display == EGL_NO_DISPLAY) return;
+    glClearColor(0.1f, 0.1f, 0.15f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+    eglSwapBuffers(display, surface);
+}
