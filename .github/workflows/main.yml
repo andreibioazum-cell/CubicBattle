@@ -24,13 +24,15 @@ jobs:
 
       - name: Generate Android Project & Build APK
         run: |
+          # 1. Создаем структуру папок
           mkdir -p app/src/main/cpp
           mkdir -p app/src/main/res/values
 
+          # 2. Копируем ТВОИ исходники из папки src/ в C++ папку Android
           cp src/*.cpp app/src/main/cpp/
           cp src/*.h app/src/main/cpp/
 
-          # Манифест БЕЗ package (чтобы не было warning от Gradle 8.5)
+          # 3. Генерируем AndroidManifest.xml (БЕЗ атрибута package, чтобы Gradle не ругался)
           cat << 'EOF' > app/src/main/AndroidManifest.xml
           <?xml version="1.0" encoding="utf-8"?>
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
@@ -50,13 +52,14 @@ jobs:
           </manifest>
           EOF
 
+          # 4. Генерируем строки
           cat << 'EOF' > app/src/main/res/values/strings.xml
           <resources>
               <string name="app_name">Cubic Battle</string>
           </resources>
           EOF
 
-          # ИСПРАВЛЕННЫЙ CMakeLists.txt для NDK 25+
+          # 5. Генерируем CMakeLists.txt (Правильный под NDK 25+, только GLESv2)
           cat << 'EOF' > app/src/main/cpp/CMakeLists.txt
           cmake_minimum_required(VERSION 3.18.1)
           project("cubicbattle")
@@ -64,9 +67,8 @@ jobs:
           find_library(android-lib android)
           find_library(log-lib log)
           find_library(egl-lib EGL)
-          find_library(gles-lib GLESv1_CM) # Используем OpenGL ES 1.x для простоты
+          find_library(gles-lib GLESv2)
 
-          # Современный способ найти native_app_glue в новых NDK
           find_package(native_app_glue REQUIRED CONFIG)
 
           file(GLOB SOURCES "*.cpp")
@@ -81,6 +83,7 @@ jobs:
           )
           EOF
 
+          # 6. Генерируем настройки Gradle
           cat << 'EOF' > settings.gradle
           pluginManagement {
               repositories {
@@ -139,7 +142,10 @@ jobs:
           dependencies {}
           EOF
 
+          # 7. Очистка кэша CMake (чтобы старые ошибки не мешали)
           rm -rf app/.cxx .gradle
+
+          # 8. Сборка
           gradle wrapper --gradle-version 8.5
           chmod +x gradlew
           ./gradlew assembleDebug --stacktrace
