@@ -30,9 +30,6 @@ jobs:
           cp src/*.cpp app/src/main/cpp/
           cp src/*.h app/src/main/cpp/
 
-          echo "=== Файлы C++, которые мы отправили компилятору ==="
-          ls -la app/src/main/cpp/
-
           cat << 'EOF' > app/src/main/AndroidManifest.xml
           <?xml version="1.0" encoding="utf-8"?>
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
@@ -143,15 +140,7 @@ jobs:
 
           gradle wrapper --gradle-version 8.5
           chmod +x gradlew
-          
-          # УМНАЯ СБОРКА: если падает, находит ошибки C++ и выводит их отдельно!
-          if ! ./gradlew assembleDebug --stacktrace > build_log.txt 2>&1; then
-            echo "============================================="
-            echo "======= СБОРКА УПАЛА. ИЩЕМ ОШИБКИ C++ ======="
-            echo "============================================="
-            grep -i "error:" build_log.txt -A 3 || tail -n 50 build_log.txt
-            exit 1
-          fi
+          ./gradlew assembleDebug --stacktrace
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
