@@ -22,6 +22,6 @@ public:
 
     Game();
     void init(Engine& engine);
-    void update(float dt);
+    void update(float dt, Engine& engine);
     void draw(Engine& engine);
 };
