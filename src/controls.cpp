@@ -1,21 +1,12 @@
 #include "controls.h"
 #include <cmath>
 
-Controls::Controls() {
-    joy = { -1, {0,0}, {0,0}, 90.0f, 36.0f };
-    atkBtn = { -1, {0,0}, 104.0f, false, 0.0f };
-    backBtn = { -1, {0,0}, 80.0f, false, 0.0f }; // Упрощенная кнопка Back (круг)
-    keys = { false, false, false, false, false };
-    aimDir = {0, -1};
-    spaceJustPressed = false;
-    isMobile = false;
-}
+Controls::Controls() : aimDir({0, -1}), spaceJustPressed(false) {}
 
 void Controls::place(int w, int h) {
     joy.center = { 160.0f, (float)h - 160.0f };
     if (joy.id == -1) joy.stick = joy.center;
     atkBtn.pos = { (float)w - 160.0f, (float)h - 160.0f };
-    backBtn.pos = { (float)w / 2.0f, 80.0f };
 }
 
 void Controls::update(float dt) {
@@ -57,13 +48,6 @@ bool Controls::getShot(Vec2& outAim) {
 }
 
 void Controls::touchPressed(int id, float x, float y) {
-    // Back button
-    Vec2 bDist = { x - backBtn.pos.x, y - backBtn.pos.y };
-    if (bDist.length() <= backBtn.radius) {
-        // В C++ нет GameState, тут нужно будет вызывать коллбек
-        return;
-    }
-    
     Vec2 jDist = { x - joy.center.x, y - joy.center.y };
     if (jDist.length() <= joy.radius) {
         joy.id = id;
@@ -102,8 +86,8 @@ void Controls::touchReleased(int id) {
 }
 
 void Controls::keyDown(int key) {
-    if (key == 51) keys.w = true; // AKEYCODE_A
-    if (key == 29) keys.a = true; // AKEYCODE_A - исправь коды под себя или используй SDL
+    if (key == 51) keys.w = true; 
+    if (key == 29) keys.a = true; 
     if (key == 47) keys.s = true;
     if (key == 32) keys.d = true;
     if (key == 62) { keys.space = true; spaceJustPressed = true; }
