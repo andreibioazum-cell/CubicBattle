@@ -24,15 +24,15 @@ jobs:
 
       - name: Generate Android Project & Build APK
         run: |
-          # 1. Создаем структуру папок Android-проекта
+          # 1. Создаем структуру папок
           mkdir -p app/src/main/cpp
           mkdir -p app/src/main/res/values
 
-          # 2. Копируем ТВОИ исходники из папки src/
+          # 2. Копируем ТВОИ исходники из папки src/ в C++ папку Android
           cp src/*.cpp app/src/main/cpp/
           cp src/*.h app/src/main/cpp/
 
-          # 3. Генерируем AndroidManifest.xml
+          # 3. Генерируем AndroidManifest.xml (Без Java, только NativeActivity)
           cat << 'EOF' > app/src/main/AndroidManifest.xml
           <?xml version="1.0" encoding="utf-8"?>
           <manifest xmlns:android="http://schemas.android.com/apk/res/android"
@@ -53,7 +53,14 @@ jobs:
           </manifest>
           EOF
 
-          # 4. Генерируем CMakeLists.txt (ТОЛЬКО NDK, БЕЗ SDL2)
+          # 4. Генерируем строки
+          cat << 'EOF' > app/src/main/res/values/strings.xml
+          <resources>
+              <string name="app_name">Cubic Battle</string>
+          </resources>
+          EOF
+
+          # 5. Генерируем CMakeLists.txt (БЕЗ SDL2, ТОЛЬКО NDK)
           cat << 'EOF' > app/src/main/cpp/CMakeLists.txt
           cmake_minimum_required(VERSION 3.18.1)
           project("cubicbattle")
@@ -62,29 +69,19 @@ jobs:
           find_library(log-lib log)
           find_library(egl-lib EGL)
           find_library(gles-lib GLESv2)
-
-          # Подключаем native_app_glue из NDK (позволяет писать C++ без Java)
-          add_library(native_app_glue STATIC ${ANDROID_NDK}/sources/android/native_app_glue/android_native_app_glue.c)
+          find_library(app-glue-lib android_native_app_glue)
 
           file(GLOB SOURCES "*.cpp")
           add_library(cubicbattle SHARED ${SOURCES})
 
-          target_include_directories(cubicbattle PRIVATE ${ANDROID_NDK}/sources/android/native_app_glue)
-
-          target_link_libraries(cubicbattle
-              native_app_glue
-              ${android-lib}
-              ${log-lib}
-              ${egl-lib}
-              ${gles-lib}
-          )
-          EOF
-
-          # 5. Генерируем строки
-          cat << 'EOF' > app/src/main/res/values/strings.xml
-          <resources>
-              <string name="app_name">Cubic Battle</string>
-          </resources>
+          if(app-glue-lib)
+              target_link_libraries(cubicbattle ${app-glue-lib} ${android-lib} ${log-lib} ${egl-lib} ${gles-lib})
+          else()
+              message(WARNING "android_native_app_glue not found as prebuilt, trying sources...")
+              add_library(native_app_glue STATIC ${ANDROID_NDK}/sources/android/native_app_glue/android_native_app_glue.c)
+              target_include_directories(native_app_glue PRIVATE ${ANDROID_NDK}/sources/android/native_app_glue)
+              target_link_libraries(cubicbattle native_app_glue ${android-lib} ${log-lib} ${egl-lib} ${gles-lib})
+          endif()
           EOF
 
           # 6. Генерируем Gradle
@@ -146,7 +143,11 @@ jobs:
           dependencies {}
           EOF
 
-          # 7. Сборка
+          # 7. Очистка кэша CMake (на всякий случай)
+          rm -rf app/.cxx
+          rm -rf .gradle
+
+          # 8. Сборка
           gradle wrapper --gradle-version 8.5
           chmod +x gradlew
           ./gradlew assembleDebug --stacktrace
