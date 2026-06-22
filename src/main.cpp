@@ -3,8 +3,6 @@
 #include <android/log.h>
 #include <android/keycodes.h>
 
-#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, "CubicBattle", __VA_ARGS__)
-
 static Engine engine;
 static Game game;
 
@@ -66,7 +64,7 @@ void android_main(struct android_app* state) {
         }
         
         if (engine.display != EGL_NO_DISPLAY) {
-            game.update(1.0f / 60.0f); // Упрощенный dt
+            game.update(1.0f / 60.0f, engine);
             game.draw(engine);
         }
     }
