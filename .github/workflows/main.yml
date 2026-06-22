@@ -24,19 +24,15 @@ jobs:
 
       - name: Generate Android Project & Build APK
         run: |
-          # 1. Создаем структуру папок
           mkdir -p app/src/main/cpp
           mkdir -p app/src/main/res/values
 
-          # 2. Копируем ТВОИ исходники из папки src/ в C++ папку Android
           cp src/*.cpp app/src/main/cpp/
           cp src/*.h app/src/main/cpp/
 
-          # ДИАГНОСТИКА: Проверяем, скопировались ли файлы
-          echo "=== Файлы в папке C++ ==="
+          echo "=== Файлы C++, которые мы отправили компилятору ==="
           ls -la app/src/main/cpp/
 
-          # 3. Генерируем AndroidManifest.xml
           cat << 'EOF' > app/src/main/AndroidManifest.xml
           <?xml version="1.0" encoding="utf-8"?>
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
@@ -62,7 +58,6 @@ jobs:
           </resources>
           EOF
 
-          # 4. Генерируем CMakeLists.txt
           cat << 'EOF' > app/src/main/cpp/CMakeLists.txt
           cmake_minimum_required(VERSION 3.18.1)
           project("cubicbattle")
@@ -86,7 +81,6 @@ jobs:
           )
           EOF
 
-          # 5. Генерируем настройки Gradle
           cat << 'EOF' > settings.gradle
           pluginManagement {
               repositories {
@@ -145,13 +139,19 @@ jobs:
           dependencies {}
           EOF
 
-          # Очистка кэша
           rm -rf app/.cxx .gradle
 
-          # Сборка
           gradle wrapper --gradle-version 8.5
           chmod +x gradlew
-          ./gradlew assembleDebug --stacktrace
+          
+          # УМНАЯ СБОРКА: если падает, находит ошибки C++ и выводит их отдельно!
+          if ! ./gradlew assembleDebug --stacktrace > build_log.txt 2>&1; then
+            echo "============================================="
+            echo "======= СБОРКА УПАЛА. ИЩЕМ ОШИБКИ C++ ======="
+            echo "============================================="
+            grep -i "error:" build_log.txt -A 3 || tail -n 50 build_log.txt
+            exit 1
+          fi
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
