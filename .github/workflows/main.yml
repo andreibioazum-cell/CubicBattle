@@ -28,10 +28,11 @@ jobs:
           mkdir -p app/src/main/cpp
           mkdir -p app/src/main/res/values
 
-          # 2. Копируем ТВОИ исходники из папки src/ в папку C++ проекта
+          # 2. Копируем ТВОИ исходники из папки src/
           cp src/*.cpp app/src/main/cpp/
+          cp src/*.h app/src/main/cpp/
 
-          # 3. Генерируем AndroidManifest.xml (NativeActivity - без Java)
+          # 3. Генерируем AndroidManifest.xml
           cat << 'EOF' > app/src/main/AndroidManifest.xml
           <?xml version="1.0" encoding="utf-8"?>
           <manifest xmlns:android="http://schemas.android.com/apk/res/android"
@@ -52,33 +53,41 @@ jobs:
           </manifest>
           EOF
 
-          # 4. Генерируем строки (название приложения)
+          # 4. Генерируем CMakeLists.txt (ТОЛЬКО NDK, БЕЗ SDL2)
+          cat << 'EOF' > app/src/main/cpp/CMakeLists.txt
+          cmake_minimum_required(VERSION 3.18.1)
+          project("cubicbattle")
+
+          find_library(android-lib android)
+          find_library(log-lib log)
+          find_library(egl-lib EGL)
+          find_library(gles-lib GLESv2)
+
+          # Подключаем native_app_glue из NDK (позволяет писать C++ без Java)
+          add_library(native_app_glue STATIC ${ANDROID_NDK}/sources/android/native_app_glue/android_native_app_glue.c)
+
+          file(GLOB SOURCES "*.cpp")
+          add_library(cubicbattle SHARED ${SOURCES})
+
+          target_include_directories(cubicbattle PRIVATE ${ANDROID_NDK}/sources/android/native_app_glue)
+
+          target_link_libraries(cubicbattle
+              native_app_glue
+              ${android-lib}
+              ${log-lib}
+              ${egl-lib}
+              ${gles-lib}
+          )
+          EOF
+
+          # 5. Генерируем строки
           cat << 'EOF' > app/src/main/res/values/strings.xml
           <resources>
               <string name="app_name">Cubic Battle</string>
           </resources>
           EOF
 
-          # 5. Генерируем CMakeLists.txt (автоматически скачивает SDL2 и собирает твои .cpp)
-          cat << 'EOF' > app/src/main/cpp/CMakeLists.txt
-          cmake_minimum_required(VERSION 3.18.1)
-          project("cubicbattle")
-
-          include(FetchContent)
-          FetchContent_Declare(
-              sdl2
-              GIT_REPOSITORY https://github.com/libsdl-org/SDL.git
-              GIT_TAG release-2.30.0
-          )
-          FetchContent_MakeAvailable(sdl2)
-
-          # Автоматически берем все .cpp файлы из этой папки
-          file(GLOB SOURCES "*.cpp")
-          add_library(cubicbattle SHARED ${SOURCES})
-          target_link_libraries(cubicbattle SDL2::SDL2 SDL2::SDL2main android log)
-          EOF
-
-          # 6. Генерируем настройки Gradle
+          # 6. Генерируем Gradle
           cat << 'EOF' > settings.gradle
           pluginManagement {
               repositories {
@@ -119,7 +128,7 @@ jobs:
                   versionName "1.0"
                   externalNativeBuild {
                       cmake {
-                          cppFlags ""
+                          cppFlags "-std=c++17"
                           arguments "-DANDROID_STL=c++_shared"
                       }
                   }
@@ -137,7 +146,7 @@ jobs:
           dependencies {}
           EOF
 
-          # 7. Устанавливаем Gradle Wrapper и собираем APK
+          # 7. Сборка
           gradle wrapper --gradle-version 8.5
           chmod +x gradlew
           ./gradlew assembleDebug --stacktrace
