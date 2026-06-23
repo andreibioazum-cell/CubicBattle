@@ -55,7 +55,7 @@ jobs:
           </resources>
           EOF
 
-          # ИСПРАВЛЕННЫЙ CMakeLists.txt: Разрешаем CMake искать в нужных директориях NDK
+          # АБСОЛЮТНО НАДЕЖНЫЙ CMakeLists.txt: Компилируем native_app_glue.c из исходников NDK
           cat << 'EOF' > app/src/main/cpp/CMakeLists.txt
           cmake_minimum_required(VERSION 3.18.1)
           project("cubicbattle")
@@ -65,20 +65,17 @@ jobs:
           find_library(egl-lib EGL)
           find_library(gles-lib GLESv2)
 
-          # Переключаем режим поиска с строгого (ONLY) на оба (BOTH)
-          # Это позволяет CMake найти native_app_glue в папке build/cmake
-          if(ANDROID_NDK)
-              set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE BOTH)
-              list(APPEND CMAKE_PREFIX_PATH "${ANDROID_NDK}/build/cmake")
-          endif()
-
-          find_package(native_app_glue CONFIG REQUIRED)
+          # Добавляем исходник native_app_glue прямо из NDK
+          add_library(native_app_glue STATIC ${ANDROID_NDK}/sources/android/native_app_glue/android_native_app_glue.c)
 
           file(GLOB SOURCES "*.cpp")
           add_library(cubicbattle SHARED ${SOURCES})
 
+          # Указываем путь к заголовочным файлам native_app_glue
+          target_include_directories(cubicbattle PRIVATE ${ANDROID_NDK}/sources/android/native_app_glue)
+
           target_link_libraries(cubicbattle
-              native_app_glue::native_app_glue
+              native_app_glue
               ${android-lib}
               ${log-lib}
               ${egl-lib}
@@ -111,7 +108,6 @@ jobs:
           }
           EOF
 
-          # Чистый build.gradle без кастомных аргументов NDK
           cat << 'EOF' > app/build.gradle
           plugins {
               id 'com.android.application'
