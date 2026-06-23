@@ -66,9 +66,6 @@ void draw_error_screen() {
 }
 
 void android_main(struct android_app* state) {
-    // Обязательно для некоторых версий NDK, чтобы приложение не вылетало сразу
-    app_dummy(); 
-
     engine.app = state;
     state->onAppCmd = engine_handle_cmd;
     state->onInputEvent = engine_handle_input;
@@ -83,4 +80,12 @@ void android_main(struct android_app* state) {
         }
         
         if (engine.display != EGL_NO_DISPLAY) {
-            if
+            if (hasError) {
+                draw_error_screen(); // Рисуем красный экран вместо вылета
+            } else {
+                game.update(1.0f / 60.0f, engine);
+                game.draw(engine);
+            }
+        }
+    }
+}
