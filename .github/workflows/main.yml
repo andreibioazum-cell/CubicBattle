@@ -55,7 +55,7 @@ jobs:
           </resources>
           EOF
 
-          # ИСПРАВЛЕННЫЙ CMakeLists.txt (добавлен CMAKE_PREFIX_PATH для поиска native_app_glue)
+          # CMakeLists.txt (убираем list(APPEND), так как путь передадим из Gradle)
           cat << 'EOF' > app/src/main/cpp/CMakeLists.txt
           cmake_minimum_required(VERSION 3.18.1)
           project("cubicbattle")
@@ -65,8 +65,6 @@ jobs:
           find_library(egl-lib EGL)
           find_library(gles-lib GLESv2)
 
-          # Указываем CMake искать пакеты внутри NDK
-          list(APPEND CMAKE_PREFIX_PATH "${ANDROID_NDK}/build/cmake")
           find_package(native_app_glue REQUIRED CONFIG)
 
           file(GLOB SOURCES "*.cpp")
@@ -106,6 +104,7 @@ jobs:
           }
           EOF
 
+          # ИСПРАВЛЕННЫЙ app/build.gradle: передаем CMAKE_PREFIX_PATH через arguments
           cat << 'EOF' > app/build.gradle
           plugins {
               id 'com.android.application'
@@ -122,7 +121,7 @@ jobs:
                   externalNativeBuild {
                       cmake {
                           cppFlags "-std=c++17"
-                          arguments "-DANDROID_STL=c++_shared"
+                          arguments "-DANDROID_STL=c++_shared", "-DCMAKE_PREFIX_PATH=${android.ndkDirectory}/build/cmake"
                       }
                   }
                   ndk {
