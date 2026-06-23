@@ -3,8 +3,12 @@
 #include <android/log.h>
 #include <android/keycodes.h>
 
+#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, "CubicBattle", __VA_ARGS__)
+#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, "CubicBattle", __VA_ARGS__)
+
 static Engine engine;
 static Game game;
+static bool hasError = false;
 
 static int32_t engine_handle_input(struct android_app* app, AInputEvent* event) {
     if (AInputEvent_getType(event) == AINPUT_EVENT_TYPE_MOTION) {
@@ -39,8 +43,12 @@ static void engine_handle_cmd(struct android_app* app, int32_t cmd) {
         case APP_CMD_INIT_WINDOW:
             engine.app = app;
             if (engine.app->window != NULL) {
-                engine.initDisplay();
-                game.init(engine);
+                if (engine.initDisplay() != 0) {
+                    hasError = true;
+                    LOGE("ОШИБКА: Не удалось инициализировать OpenGL!");
+                } else {
+                    game.init(engine);
+                }
             }
             break;
         case APP_CMD_TERM_WINDOW:
@@ -49,7 +57,18 @@ static void engine_handle_cmd(struct android_app* app, int32_t cmd) {
     }
 }
 
+void draw_error_screen() {
+    if (engine.display == EGL_NO_DISPLAY) return;
+    glViewport(0, 0, engine.width, engine.height);
+    glClearColor(1.0f, 0.0f, 0.0f, 1.0f); // КРАСНЫЙ ЭКРАН
+    glClear(GL_COLOR_BUFFER_BIT);
+    eglSwapBuffers(engine.display, engine.surface);
+}
+
 void android_main(struct android_app* state) {
+    // Обязательно для некоторых версий NDK, чтобы приложение не вылетало сразу
+    app_dummy(); 
+
     engine.app = state;
     state->onAppCmd = engine_handle_cmd;
     state->onInputEvent = engine_handle_input;
@@ -64,8 +83,4 @@ void android_main(struct android_app* state) {
         }
         
         if (engine.display != EGL_NO_DISPLAY) {
-            game.update(1.0f / 60.0f, engine);
-            game.draw(engine);
-        }
-    }
-}
+            if
