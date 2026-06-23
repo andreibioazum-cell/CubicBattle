@@ -55,6 +55,7 @@ jobs:
           </resources>
           EOF
 
+          # ИСПРАВЛЕННЫЙ CMakeLists.txt: Берем путь к NDK прямо из переменной Android Toolchain!
           cat << 'EOF' > app/src/main/cpp/CMakeLists.txt
           cmake_minimum_required(VERSION 3.18.1)
           project("cubicbattle")
@@ -63,6 +64,10 @@ jobs:
           find_library(log-lib log)
           find_library(egl-lib EGL)
           find_library(gles-lib GLESv2)
+
+          if(DEFINED ANDROID_NDK)
+              list(APPEND CMAKE_PREFIX_PATH "${ANDROID_NDK}/build/cmake")
+          endif()
 
           find_package(native_app_glue REQUIRED CONFIG)
 
@@ -103,7 +108,7 @@ jobs:
           }
           EOF
 
-          # ИСПРАВЛЕННЫЙ app/build.gradle: добавлено ndkVersion
+          # ИСПРАВЛЕННЫЙ app/build.gradle: Возвращаем к чистому виду, Gradle сам скачает NDK
           cat << 'EOF' > app/build.gradle
           plugins {
               id 'com.android.application'
@@ -111,7 +116,6 @@ jobs:
           android {
               namespace 'com.cubicbattle.nativeapp'
               compileSdk 34
-              ndkVersion "25.1.8937393"
               defaultConfig {
                   applicationId "com.cubicbattle.nativeapp"
                   minSdk 24
@@ -121,7 +125,7 @@ jobs:
                   externalNativeBuild {
                       cmake {
                           cppFlags "-std=c++17"
-                          arguments "-DANDROID_STL=c++_shared", "-DCMAKE_PREFIX_PATH=${android.ndkDirectory}/build/cmake"
+                          arguments "-DANDROID_STL=c++_shared"
                       }
                   }
                   ndk {
