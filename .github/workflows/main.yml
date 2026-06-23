@@ -55,7 +55,6 @@ jobs:
           </resources>
           EOF
 
-          # CMakeLists.txt (убираем list(APPEND), так как путь передадим из Gradle)
           cat << 'EOF' > app/src/main/cpp/CMakeLists.txt
           cmake_minimum_required(VERSION 3.18.1)
           project("cubicbattle")
@@ -104,7 +103,7 @@ jobs:
           }
           EOF
 
-          # ИСПРАВЛЕННЫЙ app/build.gradle: передаем CMAKE_PREFIX_PATH через arguments
+          # ИСПРАВЛЕННЫЙ app/build.gradle: добавлено ndkVersion
           cat << 'EOF' > app/build.gradle
           plugins {
               id 'com.android.application'
@@ -112,6 +111,7 @@ jobs:
           android {
               namespace 'com.cubicbattle.nativeapp'
               compileSdk 34
+              ndkVersion "25.1.8937393"
               defaultConfig {
                   applicationId "com.cubicbattle.nativeapp"
                   minSdk 24
@@ -143,7 +143,7 @@ jobs:
           gradle wrapper --gradle-version 8.5
           chmod +x gradlew
           
-          # УМНАЯ СБОРКА: сохраняем лог и ищем ошибки
+          # УМНАЯ СБОРКА
           ./gradlew assembleDebug --stacktrace > build_log.txt 2>&1 || BUILD_FAILED=true
           
           cat build_log.txt
