@@ -55,6 +55,7 @@ jobs:
           </resources>
           EOF
 
+          # ИСПРАВЛЕННЫЙ CMakeLists.txt (native_app_glue::native_app_glue)
           cat << 'EOF' > app/src/main/cpp/CMakeLists.txt
           cmake_minimum_required(VERSION 3.18.1)
           project("cubicbattle")
@@ -70,7 +71,7 @@ jobs:
           add_library(cubicbattle SHARED ${SOURCES})
 
           target_link_libraries(cubicbattle
-              native_app_glue
+              native_app_glue::native_app_glue
               ${android-lib}
               ${log-lib}
               ${egl-lib}
@@ -140,7 +141,21 @@ jobs:
 
           gradle wrapper --gradle-version 8.5
           chmod +x gradlew
-          ./gradlew assembleDebug --stacktrace
+          
+          # УМНАЯ СБОРКА: сохраняем весь лог в файл, а потом ищем в нем ошибки C++
+          ./gradlew assembleDebug --stacktrace > build_log.txt 2>&1 || BUILD_FAILED=true
+          
+          cat build_log.txt
+          
+          if [ "$BUILD_FAILED" = "true" ]; then
+            echo ""
+            echo "============================================="
+            echo "======= СБОРКА УПАЛА. ИЩЕМ ОШИБКИ C++ ======="
+            echo "============================================="
+            # Ищем конкретные ошибки компилятора
+            grep -E "error:|FAILED:|fatal error:" build_log.txt -A 5 || echo "Ошибка не в C++ коде, проверь Gradle/Java логи выше"
+            exit 1
+          fi
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
