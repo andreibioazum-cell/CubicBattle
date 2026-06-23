@@ -1,5 +1,6 @@
 #include "controls.h"
 #include <cmath>
+#include <algorithm> // Добавлено для std::min
 
 Controls::Controls() : aimDir({0, -1}), spaceJustPressed(false) {}
 
