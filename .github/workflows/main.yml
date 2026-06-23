@@ -55,7 +55,7 @@ jobs:
           </resources>
           EOF
 
-          # ИСПРАВЛЕННЫЙ CMakeLists.txt (native_app_glue::native_app_glue)
+          # ИСПРАВЛЕННЫЙ CMakeLists.txt (добавлен CMAKE_PREFIX_PATH для поиска native_app_glue)
           cat << 'EOF' > app/src/main/cpp/CMakeLists.txt
           cmake_minimum_required(VERSION 3.18.1)
           project("cubicbattle")
@@ -65,6 +65,8 @@ jobs:
           find_library(egl-lib EGL)
           find_library(gles-lib GLESv2)
 
+          # Указываем CMake искать пакеты внутри NDK
+          list(APPEND CMAKE_PREFIX_PATH "${ANDROID_NDK}/build/cmake")
           find_package(native_app_glue REQUIRED CONFIG)
 
           file(GLOB SOURCES "*.cpp")
@@ -142,7 +144,7 @@ jobs:
           gradle wrapper --gradle-version 8.5
           chmod +x gradlew
           
-          # УМНАЯ СБОРКА: сохраняем весь лог в файл, а потом ищем в нем ошибки C++
+          # УМНАЯ СБОРКА: сохраняем лог и ищем ошибки
           ./gradlew assembleDebug --stacktrace > build_log.txt 2>&1 || BUILD_FAILED=true
           
           cat build_log.txt
@@ -152,8 +154,7 @@ jobs:
             echo "============================================="
             echo "======= СБОРКА УПАЛА. ИЩЕМ ОШИБКИ C++ ======="
             echo "============================================="
-            # Ищем конкретные ошибки компилятора
-            grep -E "error:|FAILED:|fatal error:" build_log.txt -A 5 || echo "Ошибка не в C++ коде, проверь Gradle/Java логи выше"
+            grep -E "error:|FAILED:|fatal error:" build_log.txt -A 5 || echo "Ошибка не в C++ коде, проверь Gradle логи выше"
             exit 1
           fi
 
