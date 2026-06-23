@@ -1,8 +1,10 @@
 #include "game.h"
 #include <GLES2/gl2.h>
+#include <android/log.h>
 #include <cmath>
 
-// Шейдерный код и переменные лежат строго в .cpp
+#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, "CubicBattle", __VA_ARGS__)
+
 static const char* VS_SRC = 
     "attribute vec2 a_pos;\n"
     "uniform vec2 u_res;\n"
@@ -28,14 +30,38 @@ static void initShaders() {
     glShaderSource(vs, 1, &VS_SRC, NULL);
     glCompileShader(vs);
 
+    GLint compiled = 0;
+    glGetShaderiv(vs, GL_COMPILE_STATUS, &compiled);
+    if (!compiled) {
+        LOGE("ОШИБКА: Вершинный шейдер не скомпилирован!");
+        glDeleteShader(vs);
+        return;
+    }
+
     GLuint fs = glCreateShader(GL_FRAGMENT_SHADER);
     glShaderSource(fs, 1, &FS_SRC, NULL);
     glCompileShader(fs);
+
+    glGetShaderiv(fs, GL_COMPILE_STATUS, &compiled);
+    if (!compiled) {
+        LOGE("ОШИБКА: Фрагментный шейдер не скомпилирован!");
+        glDeleteShader(fs);
+        return;
+    }
 
     prog = glCreateProgram();
     glAttachShader(prog, vs);
     glAttachShader(prog, fs);
     glLinkProgram(prog);
+
+    GLint linked = 0;
+    glGetProgramiv(prog, GL_LINK_STATUS, &linked);
+    if (!linked) {
+        LOGE("ОШИБКА: Шейдерная программа не слинкована!");
+        glDeleteProgram(prog);
+        prog = 0;
+        return;
+    }
 
     aPos = glGetAttribLocation(prog, "a_pos");
     uRes = glGetUniformLocation(prog, "u_res");
@@ -48,6 +74,10 @@ void Game::init(Engine& engine) {
     playerPos = { (float)engine.width / 2.0f, (float)engine.height / 2.0f };
     controls.place(engine.width, engine.height);
     initShaders();
+    
+    if (prog == 0) {
+        LOGE("ОШИБКА ИНИЦИАЛИЗАЦИИ ИГРЫ: Shaders invalid!");
+    }
 }
 
 void Game::update(float dt, Engine& engine) {
@@ -94,6 +124,15 @@ void drawRect(float x, float y, float w, float h, float r, float g, float b, flo
 }
 
 void Game::draw(Engine& engine) {
+    // Если шейдеры не загрузились, рисуем КРАСНЫЙ ЭКРАН вместо вылета
+    if (prog == 0) {
+        glViewport(0, 0, engine.width, engine.height);
+        glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
+        eglSwapBuffers(engine.display, engine.surface);
+        return;
+    }
+
     glViewport(0, 0, engine.width, engine.height);
     glClearColor(0.1f, 0.1f, 0.15f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
