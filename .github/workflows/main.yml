@@ -55,7 +55,7 @@ jobs:
           </resources>
           EOF
 
-          # ИСПРАВЛЕННЫЙ CMakeLists.txt: Берем путь к NDK прямо из переменной Android Toolchain!
+          # ИСПРАВЛЕННЫЙ CMakeLists.txt: Разрешаем CMake искать в нужных директориях NDK
           cat << 'EOF' > app/src/main/cpp/CMakeLists.txt
           cmake_minimum_required(VERSION 3.18.1)
           project("cubicbattle")
@@ -65,11 +65,14 @@ jobs:
           find_library(egl-lib EGL)
           find_library(gles-lib GLESv2)
 
-          if(DEFINED ANDROID_NDK)
+          # Переключаем режим поиска с строгого (ONLY) на оба (BOTH)
+          # Это позволяет CMake найти native_app_glue в папке build/cmake
+          if(ANDROID_NDK)
+              set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE BOTH)
               list(APPEND CMAKE_PREFIX_PATH "${ANDROID_NDK}/build/cmake")
           endif()
 
-          find_package(native_app_glue REQUIRED CONFIG)
+          find_package(native_app_glue CONFIG REQUIRED)
 
           file(GLOB SOURCES "*.cpp")
           add_library(cubicbattle SHARED ${SOURCES})
@@ -108,7 +111,7 @@ jobs:
           }
           EOF
 
-          # ИСПРАВЛЕННЫЙ app/build.gradle: Возвращаем к чистому виду, Gradle сам скачает NDK
+          # Чистый build.gradle без кастомных аргументов NDK
           cat << 'EOF' > app/build.gradle
           plugins {
               id 'com.android.application'
